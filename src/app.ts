@@ -1,10 +1,14 @@
 import Fastify from "fastify";
 import { healthRoutes } from "./routes/health.js";
+import { messageRoutes } from "./routes/messages.js";
 
 export function buildApp(options: { logger?: boolean } = {}) {
   const app = Fastify({
     logger: options.logger ?? true,
     bodyLimit: 1024 * 1024,
+    ajv: {
+      customOptions: { coerceTypes: false, removeAdditional: false },
+    },
   });
 
   app.setErrorHandler((error, request, reply) => {
@@ -28,5 +32,6 @@ export function buildApp(options: { logger?: boolean } = {}) {
   });
 
   app.register(healthRoutes);
+  app.register(messageRoutes);
   return app;
 }
