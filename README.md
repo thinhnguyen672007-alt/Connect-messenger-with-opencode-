@@ -2,6 +2,21 @@
 
 Dự án học backend: nhận yêu cầu qua Messenger, giao việc cho OpenCode và gửi kết quả về người dùng.
 
+## Nhận tin nhắn thử
+
+Khi server đang chạy, mở terminal khác:
+
+```bash
+curl -i http://127.0.0.1:3000/messages -H 'Content-Type: application/json' -d '{"text":"Hãy tạo file hello.txt"}'
+```
+
+Kết quả: HTTP 200 và `{"reply":"Đã nhận: Hãy tạo file hello.txt"}`.
+Body chỉ nhận trường `text` dạng chuỗi, dài 1–2000 ký tự và có ký tự không phải khoảng trắng.
+Số, trường thừa, nội dung rỗng hoặc JSON sai bị từ chối với HTTP 400.
+Giới hạn 2000 là quy tắc thử nghiệm của ứng dụng, không phải giới hạn Meta.
+Endpoint này chưa có xác thực, chưa tạo file, chưa gọi OpenCode và chưa gửi Messenger.
+Giữ server ở địa chỉ loopback khi thử endpoint này.
+
 ## Chạy trong môi trường phát triển
 
 ```bash
@@ -53,6 +68,7 @@ Test tự động và build sẽ được bổ sung ở những bước tiếp t
 ## Cấu hình môi trường
 
 Node.js hiện tại đọc `.env` bằng `--env-file-if-exists`; không cần cài dotenv.
+Chế độ phát triển dùng `tsx watch` để tránh lỗi watch file `.env` chưa tồn tại của lệnh Node watch trước đây.
 Có thể sao chép `.env.example` thành `.env` và đổi `PORT`.
 Giữ `HOST=127.0.0.1` khi học trên máy; cấu hình công khai sẽ được giải thích khi deploy.
 
