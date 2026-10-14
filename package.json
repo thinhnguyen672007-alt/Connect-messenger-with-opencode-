@@ -2,10 +2,17 @@
   "name": "messenger-to-opencode",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "type": "module",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "node --env-file-if-exists=.env --import tsx --watch src/server.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --max-warnings=0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm test && npm run build",
+    "test": "node --import tsx --test src/app.test.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node --env-file-if-exists=.env dist/server.js"
   },
   "repository": {
     "type": "git",
@@ -22,8 +29,12 @@
     "fastify": "^5.12.7"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^26.6.5",
+    "eslint": "^10.12.0",
+    "prettier": "^3.9.10",
     "tsx": "^4.23.15",
-    "typescript": "^7.0.2"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.71.2"
   }
 }
