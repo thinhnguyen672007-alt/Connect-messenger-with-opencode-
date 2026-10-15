@@ -1,6 +1,7 @@
 import Fastify from "fastify";
 import { healthRoutes } from "./routes/health.js";
 import { messageRoutes } from "./routes/messages.js";
+import { taskRoutes } from "./routes/tasks.js";
 
 export function buildApp(options: { logger?: boolean } = {}) {
   const app = Fastify({
@@ -33,5 +34,6 @@ export function buildApp(options: { logger?: boolean } = {}) {
 
   app.register(healthRoutes);
   app.register(messageRoutes);
+  app.register(taskRoutes);
   return app;
 }

@@ -19,6 +19,19 @@ Giữ server ở địa chỉ loopback khi thử endpoint này.
 
 ## Chạy trong môi trường phát triển
 
+### Đọc task mẫu
+
+`GET /tasks/task-001` trả `{"id":"task-001","status":"pending"}`.
+`GET /tasks/task-002` trả `{"id":"task-002","status":"completed"}`.
+`GET /tasks/task-999` trả HTTP 404 và `{"error":"Task not found"}`.
+Đây là dữ liệu giả trong RAM, chưa phải công việc được tạo từ tin nhắn hoặc agent.
+
+```bash
+curl -i http://127.0.0.1:3000/tasks/task-001
+```
+
+### Khởi động
+
 ```bash
 npm ci
 npm run dev

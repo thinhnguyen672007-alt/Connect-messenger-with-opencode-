@@ -3,6 +3,27 @@ import { test } from "node:test";
 import { buildApp } from "./app.js";
 import { readConfig } from "./config.js";
 
+test("tasks returns the matching task or a real HTTP 404", async (t) => {
+  const app = buildApp({ logger: false });
+  t.after(() => app.close());
+
+  for (const expected of [
+    { id: "task-001", status: "pending" },
+    { id: "task-002", status: "completed" },
+  ]) {
+    const response = await app.inject({
+      method: "GET",
+      url: `/tasks/${expected.id}`,
+    });
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(response.json(), expected);
+  }
+
+  const missing = await app.inject({ method: "GET", url: "/tasks/task-999" });
+  assert.equal(missing.statusCode, 404);
+  assert.deepEqual(missing.json(), { error: "Task not found" });
+});
+
 test("messages accepts text and trims surrounding whitespace", async (t) => {
   const app = buildApp({ logger: false });
   t.after(() => app.close());
