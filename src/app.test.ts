@@ -8,8 +8,8 @@ test("tasks returns the matching task or a real HTTP 404", async (t) => {
   t.after(() => app.close());
 
   for (const expected of [
-    { id: "task-001", status: "pending" },
-    { id: "task-002", status: "completed" },
+    { id: "task-001", text: "Tạo file hello.txt", status: "pending" },
+    { id: "task-002", text: "Đọc cấu trúc dự án", status: "completed" },
   ]) {
     const response = await app.inject({
       method: "GET",
@@ -22,6 +22,64 @@ test("tasks returns the matching task or a real HTTP 404", async (t) => {
   const missing = await app.inject({ method: "GET", url: "/tasks/task-999" });
   assert.equal(missing.statusCode, 404);
   assert.deepEqual(missing.json(), { error: "Task not found" });
+});
+
+// Kiểm tra cả vòng tạo → đọc lại, không chỉ phản hồi POST riêng lẻ.
+test("creates unique tasks that can be retrieved by ID", async (t) => {
+  const app = buildApp({ logger: false });
+  t.after(() => app.close());
+  const ids = new Set<string>();
+  for (let i = 0; i < 2; i++) {
+    const created = await app.inject({
+      method: "POST",
+      url: "/tasks",
+      payload: { text: "  Tạo file mới  " },
+    });
+    assert.equal(created.statusCode, 201);
+    const task = created.json<{ id: string; text: string; status: string }>();
+    assert.match(task.id, /^[0-9a-f-]{36}$/);
+    assert.equal(task.text, "Tạo file mới");
+    assert.equal(task.status, "pending");
+    assert.equal(created.headers.location, `/tasks/${task.id}`);
+    ids.add(task.id);
+    const found = await app.inject({ method: "GET", url: `/tasks/${task.id}` });
+    assert.equal(found.statusCode, 200);
+    assert.deepEqual(found.json(), task);
+  }
+  assert.equal(ids.size, 2);
+});
+
+// Tạo lại ứng dụng minh họa dữ liệu RAM không phải lưu trữ bền vững.
+test("rejects invalid tasks and does not share task data across app instances", async (t) => {
+  const app = buildApp({ logger: false });
+  const otherApp = buildApp({ logger: false });
+  t.after(() => app.close());
+  t.after(() => otherApp.close());
+  for (const payload of [
+    {},
+    { text: 123 },
+    { text: " " },
+    { text: "a".repeat(2001) },
+    { text: "Hi", status: "completed" },
+  ]) {
+    const response = await app.inject({
+      method: "POST",
+      url: "/tasks",
+      payload,
+    });
+    assert.equal(response.statusCode, 400);
+  }
+  const created = await app.inject({
+    method: "POST",
+    url: "/tasks",
+    payload: { text: "Task riêng" },
+  });
+  const task = created.json<{ id: string }>();
+  const missing = await otherApp.inject({
+    method: "GET",
+    url: `/tasks/${task.id}`,
+  });
+  assert.equal(missing.statusCode, 404);
 });
 
 test("messages accepts text and trims surrounding whitespace", async (t) => {

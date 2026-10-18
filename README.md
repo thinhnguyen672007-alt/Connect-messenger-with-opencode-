@@ -21,8 +21,8 @@ Giữ server ở địa chỉ loopback khi thử endpoint này.
 
 ### Đọc task mẫu
 
-`GET /tasks/task-001` trả `{"id":"task-001","status":"pending"}`.
-`GET /tasks/task-002` trả `{"id":"task-002","status":"completed"}`.
+`GET /tasks/task-001` trả `{"id":"task-001","text":"Tạo file hello.txt","status":"pending"}`.
+`GET /tasks/task-002` trả `{"id":"task-002","text":"Đọc cấu trúc dự án","status":"completed"}`.
 `GET /tasks/task-999` trả HTTP 404 và `{"error":"Task not found"}`.
 Đây là dữ liệu giả trong RAM, chưa phải công việc được tạo từ tin nhắn hoặc agent.
 
@@ -30,7 +30,17 @@ Giữ server ở địa chỉ loopback khi thử endpoint này.
 curl -i http://127.0.0.1:3000/tasks/task-001
 ```
 
-### Khởi động
+### Tạo task trong RAM
+
+```bash
+curl -i http://127.0.0.1:3000/tasks -H 'Content-Type: application/json' -d '{"text":"Hãy tạo file hello.txt"}'
+```
+
+Kết quả HTTP 201 chứa `id`, `text` và `status: pending`. Header `Location` chỉ đường dẫn đọc task.
+Lấy ID rồi gọi `GET /tasks/ID`. Task mất khi server restart; chưa có agent thực hiện.
+Body chỉ nhận `text` dạng chuỗi 1–2000 ký tự, không được toàn khoảng trắng.
+
+### Chạy ứng dụng
 
 ```bash
 npm ci
