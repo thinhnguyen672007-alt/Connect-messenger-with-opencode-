@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "description": "Dự án học Backend Engineering bằng Node.js và TypeScript: nhận yêu cầu qua Messenger, giao việc cho OpenCode, rồi gửi kết quả về người dùng.",
   "main": "index.js",
+  "type": "module",
   "scripts": {
+    "dev": "tsx watch src/server.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -19,6 +21,7 @@
   "homepage": "https://github.com/thinhnguyen672007-alt/Connect-messenger-with-opencode-#readme",
   "devDependencies": {
     "@types/node": "^26.6.6",
+    "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   }
 }
