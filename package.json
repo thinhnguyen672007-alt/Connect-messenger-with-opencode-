@@ -2,11 +2,13 @@
   "name": "messenger-to-opencode",
   "version": "1.0.0",
   "description": "Dự án học Backend Engineering bằng Node.js và TypeScript: nhận yêu cầu qua Messenger, giao việc cho OpenCode, rồi gửi kết quả về người dùng.",
-  "main": "index.js",
+  "main": "dist/server.js",
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "start": "node dist/server.js"
   },
   "repository": {
     "type": "git",
