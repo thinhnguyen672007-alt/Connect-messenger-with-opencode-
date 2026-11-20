@@ -12,6 +12,16 @@ Dự án học backend: kết nối Messenger với OpenCode để nhắn yêu c
 
 `Messenger/Page -> Meta Webhook -> Node.js API (Express, TS) -> Redis/BullMQ -> Worker -> OpenCode -> PostgreSQL -> Messenger Send API -> User`
 
+## Đề xuất luồng xử lý
+
+1. Người dùng nhắn tin cho Page; Meta gửi sự kiện về webhook POST /webhook.
+2. API kiểm tra chữ ký HMAC và verify token, lưu tin nhắn vào PostgreSQL rồi trả 200 ngay để Meta không gửi lại.
+3. API đẩy một job vào hàng đợi BullMQ (Redis), dùng messageId làm khóa idempotency để tránh xử lý trùng.
+4. Worker lấy job, mở hoặc tái sử dụng session OpenCode theo conversationId rồi gửi nội dung tin nhắn cho agent.
+5. Agent xử lý xong, worker lưu kết quả vào PostgreSQL và gọi Messenger Send API trả lời người dùng.
+6. Gặp lỗi tạm thời (mạng, OpenCode bận), job tự retry theo backoff; quá số lần thì ghi log và báo lỗi về chat.
+Nguyên tắc: webhook chỉ nhận và xếp hàng, mọi xử lý nặng nằm ở worker để API luôn phản hồi nhanh.
+
 ## Công nghệ chính
 
 - Node.js, TypeScript, Express
