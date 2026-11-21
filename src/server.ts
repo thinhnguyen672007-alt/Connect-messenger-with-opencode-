@@ -26,6 +26,14 @@ function readRawBody(req: http.IncomingMessage): Promise<Buffer> {
   });
 }
 
+function verifySignature(rawBody: Buffer, header: string | undefined): boolean {
+  if (!header?.startsWith("sha256=")) return false;
+  const received = Buffer.from(header.slice("sha256=".length), "hex");
+  const expected = crypto.createHmac("sha256", APP_SECRET!).update(rawBody).digest();
+  if (received.length !== expected.length) return false;
+  return crypto.timingSafeEqual(received, expected);
+}
+
 const server = http.createServer((req, res) => {
   const method = req.method ?? "GET";
   const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
