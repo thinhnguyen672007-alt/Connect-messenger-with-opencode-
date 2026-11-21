@@ -2,6 +2,8 @@ import http from "node:http";
 import { logger } from "./logger.js";
 import { verifyMetaSignature } from "./meta/verify.js";
 import { extractMessages } from "./meta/parser.js";
+import { InMemoryQueue } from "./queue.js";
+import type { WebhookMessage } from "./types.js";
 
 const HOST = "127.0.0.1";
 const PORT = Number(process.env.PORT ?? 3000);
@@ -38,6 +40,12 @@ function isDuplicate(mid: string): boolean {
   return false;
 }
 
+
+
+const queue = new InMemoryQueue(async (msg: WebhookMessage) => {
+  // Placeholder: worker will call OpenCode and send reply in next steps.
+  logger.info("job_processing", { mid: msg.mid, senderId: msg.senderId, text: msg.text });
+});
 function readRawBody(req: http.IncomingMessage, maxBytes: number): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
@@ -87,7 +95,7 @@ async function handleWebhookPost(req: http.IncomingMessage, res: http.ServerResp
       logger.info("duplicate_ignored", { mid: msg.mid });
       continue;
     }
-    logger.info("message_received", { mid: msg.mid, senderId: msg.senderId, text: msg.text });
+    await queue.enqueue(msg);
   }
 
   res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
