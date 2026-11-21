@@ -5,6 +5,10 @@ const PORT = 3000;
 
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 
+if (!VERIFY_TOKEN) {
+  console.warn("warning: VERIFY_TOKEN is not set, webhook verification will fail");
+}
+
 const server = http.createServer((req, res) => {
   const method = req.method ?? "GET";
   const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
@@ -36,9 +40,6 @@ const server = http.createServer((req, res) => {
   res.end(JSON.stringify({ error: "Not Found" }));
 });
 
-if (!VERIFY_TOKEN) {
-  console.warn("warning: VERIFY_TOKEN is not set, webhook verification will fail");
-}
 
 server.listen(PORT, HOST, () => {
   console.log(`listening on http://${HOST}:${PORT}`);
