@@ -1,6 +1,6 @@
 import http from "node:http";
-import crypto from "node:crypto";
 import { logger } from "./logger.js";
+import { verifyMetaSignature } from "./meta/verify.js";
 import type { WebhookMessage } from "./types.js";
 
 const HOST = "127.0.0.1";
@@ -56,13 +56,6 @@ function readRawBody(req: http.IncomingMessage, maxBytes: number): Promise<Buffe
   });
 }
 
-function verifySignature(rawBody: Buffer, header: string | undefined): boolean {
-  if (!header?.startsWith("sha256=")) return false;
-  const received = Buffer.from(header.slice("sha256=".length), "hex");
-  const expected = crypto.createHmac("sha256", APP_SECRET!).update(rawBody).digest();
-  if (received.length !== expected.length) return false;
-  return crypto.timingSafeEqual(received, expected);
-}
 
 function sendJson(res: http.ServerResponse, status: number, body: unknown): void {
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
@@ -107,7 +100,7 @@ async function handleWebhookPost(req: http.IncomingMessage, res: http.ServerResp
   const sig = req.headers["x-hub-signature-256"];
   const sigHeader = Array.isArray(sig) ? sig[0] : sig;
 
-  if (!verifySignature(rawBody, sigHeader)) {
+  if (!verifyMetaSignature(rawBody, sigHeader, APP_SECRET!)) {
     sendJson(res, 403, { error: "Forbidden" });
     return;
   }
