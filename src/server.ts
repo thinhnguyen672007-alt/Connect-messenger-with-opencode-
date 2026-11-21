@@ -3,7 +3,7 @@ import { logger } from "./logger.js";
 import { verifyMetaSignature } from "./meta/verify.js";
 import { extractMessages } from "./meta/parser.js";
 import { InMemoryQueue } from "./queue.js";
-import type { WebhookMessage } from "./types.js";
+import { processMessage } from "./worker.js";
 
 const HOST = "127.0.0.1";
 const PORT = Number(process.env.PORT ?? 3000);
@@ -42,10 +42,7 @@ function isDuplicate(mid: string): boolean {
 
 
 
-const queue = new InMemoryQueue(async (msg: WebhookMessage) => {
-  // Placeholder: worker will call OpenCode and send reply in next steps.
-  logger.info("job_processing", { mid: msg.mid, senderId: msg.senderId, text: msg.text });
-});
+const queue = new InMemoryQueue(processMessage);
 function readRawBody(req: http.IncomingMessage, maxBytes: number): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
