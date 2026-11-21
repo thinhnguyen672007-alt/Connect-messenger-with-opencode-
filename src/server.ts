@@ -1,5 +1,6 @@
 import http from "node:http";
 import crypto from "node:crypto";
+import { logger } from "./logger.js";
 
 const HOST = "127.0.0.1";
 const PORT = Number(process.env.PORT ?? 3000);
@@ -24,7 +25,6 @@ if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) {
   process.exit(1);
 }
 
-// In-memory dedupe: OK for single-process dev. Replace with Redis/DB in Architecture C.
 const seenMids = new Map<string, number>();
 
 function isDuplicate(mid: string): boolean {
@@ -84,7 +84,7 @@ function extractMessages(payload: unknown): WebhookMessage[] {
   const out: WebhookMessage[] = [];
   for (const entry of p.entry) {
     if (!entry || typeof entry !== "object") continue;
-    const e = entry as { id?: unknown; time?: unknown; messaging?: unknown };
+    const e = entry as { id?: unknown; messaging?: unknown };
     const pageId = typeof e.id === "string" ? e.id : "";
     if (!Array.isArray(e.messaging)) continue;
 
@@ -128,18 +128,18 @@ async function handleWebhookPost(req: http.IncomingMessage, res: http.ServerResp
   const messages = extractMessages(payload);
   for (const msg of messages) {
     if (isDuplicate(msg.mid)) {
-      console.log("duplicate ignored", { mid: msg.mid });
+      logger.info("duplicate_ignored", { mid: msg.mid });
       continue;
     }
-    console.log("received message", { mid: msg.mid, senderId: msg.senderId, text: msg.text });
+    logger.info("message_received", { mid: msg.mid, senderId: msg.senderId, text: msg.text });
   }
 
-  // Acknowledge fast; heavy work moves to queue/worker in next steps.
   res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
   res.end("EVENT_RECEIVED");
 }
 
 const server = http.createServer(async (req, res) => {
+  const started = Date.now();
   try {
     const method = req.method ?? "GET";
     const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
@@ -176,13 +176,20 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 413, { error: "Payload Too Large" });
       return;
     }
-    console.error("request error:", err);
+    logger.error("request_error", { err: err instanceof Error ? err.message : String(err) });
     if (!res.headersSent) {
       sendJson(res, 500, { error: "Internal Server Error" });
     }
+  } finally {
+    logger.info("http_request", {
+      method: req.method,
+      url: req.url,
+      status: res.statusCode,
+      ms: Date.now() - started,
+    });
   }
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`listening on http://${HOST}:${PORT}`);
+  logger.info("server_listening", { host: HOST, port: PORT });
 });
