@@ -4,6 +4,7 @@ import crypto from "node:crypto";
 const HOST = "127.0.0.1";
 const PORT = Number(process.env.PORT ?? 3000);
 const MAX_BODY_BYTES = 1024 * 1024; // 1MB
+const DEDUPE_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 const APP_SECRET = process.env.APP_SECRET;
@@ -21,6 +22,19 @@ if (!APP_SECRET) {
 if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) {
   console.error("PORT must be an integer between 1 and 65535");
   process.exit(1);
+}
+
+// In-memory dedupe: OK for single-process dev. Replace with Redis/DB in Architecture C.
+const seenMids = new Map<string, number>();
+
+function isDuplicate(mid: string): boolean {
+  const now = Date.now();
+  for (const [k, ts] of seenMids) {
+    if (now - ts > DEDUPE_TTL_MS) seenMids.delete(k);
+  }
+  if (seenMids.has(mid)) return true;
+  seenMids.set(mid, now);
+  return false;
 }
 
 function readRawBody(req: http.IncomingMessage, maxBytes: number): Promise<Buffer> {
@@ -132,6 +146,10 @@ const server = http.createServer(async (req, res) => {
       const payload = JSON.parse(rawBody.toString("utf8"));
       const messages = extractMessages(payload);
       for (const msg of messages) {
+        if (isDuplicate(msg.mid)) {
+          console.log("duplicate ignored", { mid: msg.mid });
+          continue;
+        }
         console.log("received message", { mid: msg.mid, senderId: msg.senderId, text: msg.text });
       }
 
