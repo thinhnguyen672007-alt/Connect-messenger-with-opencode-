@@ -1,6 +1,7 @@
 import http from "node:http";
 import crypto from "node:crypto";
 import { logger } from "./logger.js";
+import type { WebhookMessage } from "./types.js";
 
 const HOST = "127.0.0.1";
 const PORT = Number(process.env.PORT ?? 3000);
@@ -68,13 +69,7 @@ function sendJson(res: http.ServerResponse, status: number, body: unknown): void
   res.end(JSON.stringify(body));
 }
 
-type WebhookMessage = {
-  senderId: string;
-  pageId: string;
-  mid: string;
-  text: string;
-  timestamp: number;
-};
+import type { WebhookMessage } from "./types.js";
 
 function extractMessages(payload: unknown): WebhookMessage[] {
   if (!payload || typeof payload !== "object") return [];
