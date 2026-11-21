@@ -2,7 +2,8 @@ import http from "node:http";
 import crypto from "node:crypto";
 
 const HOST = "127.0.0.1";
-const PORT = 3000;
+const PORT = Number(process.env.PORT ?? 3000);
+const MAX_BODY_BYTES = 1024 * 1024; // 1MB
 
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 const APP_SECRET = process.env.APP_SECRET;
@@ -17,10 +18,24 @@ if (!APP_SECRET) {
   process.exit(1);
 }
 
-function readRawBody(req: http.IncomingMessage): Promise<Buffer> {
+if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) {
+  console.error("PORT must be an integer between 1 and 65535");
+  process.exit(1);
+}
+
+function readRawBody(req: http.IncomingMessage, maxBytes: number): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
-    req.on("data", (chunk) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
+    let size = 0;
+    req.on("data", (chunk: Buffer) => {
+      size += chunk.length;
+      if (size > maxBytes) {
+        reject(new Error("BODY_TOO_LARGE"));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
     req.on("end", () => resolve(Buffer.concat(chunks)));
     req.on("error", reject);
   });
@@ -34,6 +49,11 @@ function verifySignature(rawBody: Buffer, header: string | undefined): boolean {
   return crypto.timingSafeEqual(received, expected);
 }
 
+function sendJson(res: http.ServerResponse, status: number, body: unknown): void {
+  res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
+  res.end(JSON.stringify(body));
+}
+
 const server = http.createServer(async (req, res) => {
   try {
     const method = req.method ?? "GET";
@@ -41,8 +61,7 @@ const server = http.createServer(async (req, res) => {
     const pathname = url.pathname;
 
     if (method === "GET" && pathname === "/health") {
-      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-      res.end(JSON.stringify({ status: "ok" }));
+      sendJson(res, 200, { status: "ok" });
       return;
     }
 
@@ -57,19 +76,17 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      res.writeHead(403, { "Content-Type": "application/json; charset=utf-8" });
-      res.end(JSON.stringify({ error: "Forbidden" }));
+      sendJson(res, 403, { error: "Forbidden" });
       return;
     }
 
     if (method === "POST" && pathname === "/webhook") {
-      const rawBody = await readRawBody(req);
+      const rawBody = await readRawBody(req, MAX_BODY_BYTES);
       const sig = req.headers["x-hub-signature-256"];
       const sigHeader = Array.isArray(sig) ? sig[0] : sig;
 
       if (!verifySignature(rawBody, sigHeader)) {
-        res.writeHead(403, { "Content-Type": "application/json; charset=utf-8" });
-        res.end(JSON.stringify({ error: "Forbidden" }));
+        sendJson(res, 403, { error: "Forbidden" });
         return;
       }
 
@@ -81,13 +98,15 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    res.writeHead(404, { "Content-Type": "application/json; charset=utf-8" });
-    res.end(JSON.stringify({ error: "Not Found" }));
+    sendJson(res, 404, { error: "Not Found" });
   } catch (err) {
+    if (err instanceof Error && err.message === "BODY_TOO_LARGE") {
+      sendJson(res, 413, { error: "Payload Too Large" });
+      return;
+    }
     console.error("request error:", err);
     if (!res.headersSent) {
-      res.writeHead(500, { "Content-Type": "application/json; charset=utf-8" });
-      res.end(JSON.stringify({ error: "Internal Server Error" }));
+      sendJson(res, 500, { error: "Internal Server Error" });
     }
   }
 });
