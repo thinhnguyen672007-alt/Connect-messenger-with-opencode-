@@ -1,23 +1,28 @@
 import http from "node:http";
+import crypto from "node:crypto";
 
 const HOST = "127.0.0.1";
-const PORT = Number(process.env.PORT ?? 3000);
+const PORT = 3000;
+const MAX_BODY_BYTES = 1024 * 1024;
 
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
+const APP_SECRET = process.env.APP_SECRET;
+
 if (!VERIFY_TOKEN) {
-  console.error("VERIFY_TOKEN is required");
+  console.warn("warning: VERIFY_TOKEN is not set, webhook verification will fail");
   process.exit(1);
 }
 
-if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) {
-  console.error("PORT must be an integer between 1 and 65535");
+if(!APP_SECRET) {
+  console.warn("warning: APP_SECRET is not set, verification fail");
   process.exit(1);
 }
 
-function sendJson(res: http.ServerResponse, status: number, body: unknown): void {
-  res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
-  res.end(JSON.stringify(body));
+if(!Number.isInterger(PORT) || PORT < 1 || PORT > 65535) {
+  console.warn("warning: PORT must be in range from 1 to 65535");
+  process.exit(1);
 }
+
 
 const server = http.createServer((req, res) => {
   const method = req.method ?? "GET";
@@ -25,7 +30,8 @@ const server = http.createServer((req, res) => {
   const pathname = url.pathname;
 
   if (method === "GET" && pathname === "/health") {
-    sendJson(res, 200, { status: "ok" });
+    res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+    res.end(JSON.stringify({ status: "ok" }));
     return;
   }
 
@@ -40,12 +46,15 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    sendJson(res, 403, { error: "Forbidden" });
+    res.writeHead(403, { "Content-Type": "application/json; charset=utf-8" });
+    res.end(JSON.stringify({ error: "Forbidden" }));
     return;
   }
 
-  sendJson(res, 404, { error: "Not Found" });
+  res.writeHead(404, { "Content-Type": "application/json; charset=utf-8" });
+  res.end(JSON.stringify({ error: "Not Found" }));
 });
+
 
 server.listen(PORT, HOST, () => {
   console.log(`listening on http://${HOST}:${PORT}`);
