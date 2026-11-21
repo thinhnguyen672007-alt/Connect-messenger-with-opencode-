@@ -7,6 +7,7 @@ const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 
 if (!VERIFY_TOKEN) {
   console.warn("warning: VERIFY_TOKEN is not set, webhook verification will fail");
+  process.exit(1);
 }
 
 const server = http.createServer((req, res) => {
