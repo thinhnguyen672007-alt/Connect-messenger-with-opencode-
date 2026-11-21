@@ -107,6 +107,38 @@ function extractMessages(payload: unknown): WebhookMessage[] {
   return out;
 }
 
+async function handleWebhookPost(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
+  const rawBody = await readRawBody(req, MAX_BODY_BYTES);
+  const sig = req.headers["x-hub-signature-256"];
+  const sigHeader = Array.isArray(sig) ? sig[0] : sig;
+
+  if (!verifySignature(rawBody, sigHeader)) {
+    sendJson(res, 403, { error: "Forbidden" });
+    return;
+  }
+
+  let payload: unknown;
+  try {
+    payload = JSON.parse(rawBody.toString("utf8"));
+  } catch {
+    sendJson(res, 400, { error: "Invalid JSON" });
+    return;
+  }
+
+  const messages = extractMessages(payload);
+  for (const msg of messages) {
+    if (isDuplicate(msg.mid)) {
+      console.log("duplicate ignored", { mid: msg.mid });
+      continue;
+    }
+    console.log("received message", { mid: msg.mid, senderId: msg.senderId, text: msg.text });
+  }
+
+  // Acknowledge fast; heavy work moves to queue/worker in next steps.
+  res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
+  res.end("EVENT_RECEIVED");
+}
+
 const server = http.createServer(async (req, res) => {
   try {
     const method = req.method ?? "GET";
@@ -134,27 +166,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (method === "POST" && pathname === "/webhook") {
-      const rawBody = await readRawBody(req, MAX_BODY_BYTES);
-      const sig = req.headers["x-hub-signature-256"];
-      const sigHeader = Array.isArray(sig) ? sig[0] : sig;
-
-      if (!verifySignature(rawBody, sigHeader)) {
-        sendJson(res, 403, { error: "Forbidden" });
-        return;
-      }
-
-      const payload = JSON.parse(rawBody.toString("utf8"));
-      const messages = extractMessages(payload);
-      for (const msg of messages) {
-        if (isDuplicate(msg.mid)) {
-          console.log("duplicate ignored", { mid: msg.mid });
-          continue;
-        }
-        console.log("received message", { mid: msg.mid, senderId: msg.senderId, text: msg.text });
-      }
-
-      res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
-      res.end("EVENT_RECEIVED");
+      await handleWebhookPost(req, res);
       return;
     }
 
