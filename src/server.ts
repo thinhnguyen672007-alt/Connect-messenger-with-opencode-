@@ -1,12 +1,19 @@
 import http from "node:http";
+import crypto from "node:crypto";
 
 const HOST = "127.0.0.1";
 const PORT = 3000;
 
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
+const APP_SECRET = process.env.APP_SECRET;
 
 if (!VERIFY_TOKEN) {
-  console.warn("warning: VERIFY_TOKEN is not set, webhook verification will fail");
+  console.error("VERIFY_TOKEN is required");
+  process.exit(1);
+}
+
+if (!APP_SECRET) {
+  console.error("APP_SECRET is required");
   process.exit(1);
 }
 
@@ -40,7 +47,6 @@ const server = http.createServer((req, res) => {
   res.writeHead(404, { "Content-Type": "application/json; charset=utf-8" });
   res.end(JSON.stringify({ error: "Not Found" }));
 });
-
 
 server.listen(PORT, HOST, () => {
   console.log(`listening on http://${HOST}:${PORT}`);
