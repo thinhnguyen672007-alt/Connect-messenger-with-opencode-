@@ -20,6 +20,7 @@ npm run dev
 | Name | Required | Purpose |
 |---|---|---|
 | `VERIFY_TOKEN` | yes | Meta webhook verification token |
+| `APP_SECRET` | yes | Meta app secret; required at startup, request signature verification not wired yet |
 | `PORT` | no | Default `3000` |
 
 ## Test
