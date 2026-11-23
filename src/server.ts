@@ -56,8 +56,7 @@ const server = http.createServer((req, res) => {
   const pathname = url.pathname;
 
   if (method === "GET" && pathname === "/health") {
-    res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-    res.end(JSON.stringify({ status: "ok" }));
+    sendJson(res, 200, { status: "ok" });
     return;
   }
 
@@ -72,13 +71,11 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    res.writeHead(403, { "Content-Type": "application/json; charset=utf-8" });
-    res.end(JSON.stringify({ error: "Forbidden" }));
+    sendJson(res, 403, { error: "Forbidden" });
     return;
   }
 
-  res.writeHead(404, { "Content-Type": "application/json; charset=utf-8" });
-  res.end(JSON.stringify({ error: "Not Found" }));
+  sendJson(res, 404, { error: "Not Found" });
 });
 
 
