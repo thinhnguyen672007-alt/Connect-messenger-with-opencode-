@@ -18,11 +18,37 @@ if(!APP_SECRET) {
   process.exit(1);
 }
 
-if(!Number.isInterger(PORT) || PORT < 1 || PORT > 65535) {
+if(!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) {
   console.warn("warning: PORT must be in range from 1 to 65535");
   process.exit(1);
 }
 
+// chung một function sendjson
+function sendJson(res: http.ServerResponse, status: number, body: unknown): void {
+  res.writeHead(status, {"Content-Type" : "application/json; charset=utf-8"});
+  res.end(JSON.stringify(body));
+  }
+
+function readRawBody(req: http.IncomingMessage, maxBytes: number) {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let size = 0;
+
+    req.on("data", (chunk: Buffer) => {
+      size += chunk.length;
+      if(size > maxBytes) {
+        reject(new Error("BODY TOO LARGE"));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on("end", () => resolve(Buffer.concat(chunks)));
+    req.on("error", reject);
+  })
+}
+
+  
 
 const server = http.createServer((req, res) => {
   const method = req.method ?? "GET";
