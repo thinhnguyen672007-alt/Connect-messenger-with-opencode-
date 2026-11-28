@@ -6,11 +6,21 @@ The server is intentionally built on raw `node:http` (no framework) to learn wha
 
 ## How it works
 
+The idea is simple: I send a message to a Messenger bot, the bot passes it to OpenCode, OpenCode does the work, and the result comes back to the same chat.
+
 ```
-Messenger user -> Meta webhook -> this server -> OpenCode -> reply to Messenger
+Messenger -> Meta webhook -> this server -> OpenCode -> reply to Messenger
 ```
 
-Only the first hop is wired so far (see Status). The server currently handles the Meta webhook verification handshake and a health check.
+Step by step:
+
+1. I send a message to the bot on Messenger.
+2. Meta forwards the message to this server as a webhook request. Before trusting it, the server verifies the signature Meta sends with the request, using the app secret and the raw body, so random requests from the internet get rejected.
+3. The server reads the message text and turns it into a task for OpenCode.
+4. OpenCode runs the task and returns the result.
+5. The server sends the result back to me through the Messenger Send API.
+
+Where it stands today: only the first hop is real. The server answers the Meta verification handshake on `GET /webhook`, serves `GET /health`, and the HMAC signature check is already written, ready to guard the POST handler. Parsing messages, dispatching to OpenCode and replying are still open in the Status list below.
 
 ## Endpoints
 
